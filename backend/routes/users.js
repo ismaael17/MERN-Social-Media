@@ -3,6 +3,8 @@ const router = express.Router();
 const createUser = require("../services/userService");
 const validator = require("validator");
 const { body, validationResult } = require("express-validator");
+const jwt = require("jsonwebtoken");
+const config = require("../config/config");
 
 const userValidationRules = [
   body("email").isEmail().withMessage("Email is not valid."),
@@ -20,12 +22,20 @@ router.post("/", userValidationRules, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
-  }
-  try {
-    const user = await createUser(req.body);
-    return res.status(201).json({ user });
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
+  } else {
+    try {
+      const user = await createUser(req.body);
+      // Generate the JWT token
+      const payload = { userId: user._id };
+      const jwtOptions = { expiresIn: "1d" }; // Set the token expiration time, e.g., 1 day
+      const token = jwt.sign(payload, config.jwtSecret, jwtOptions);
+
+      // Remove the password field from the user object
+      user.password = undefined;
+      return res.status(201).json({ user, token });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 });
 
