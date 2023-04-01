@@ -1,10 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const createUser = require("../services/userService");
-const validator = require("validator");
+const userService = require("../services/userService");
 const { body, validationResult } = require("express-validator");
-const jwt = require("jsonwebtoken");
-const config = require("../config/config");
+const User = require("../models/Users");
 
 const userValidationRules = [
   body("email").isEmail().withMessage("Email is not valid."),
@@ -18,17 +16,14 @@ const userValidationRules = [
 // @desc    Create a user
 // @access  Public
 router.post("/", userValidationRules, async (req, res) => {
-  console.log(req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   } else {
     try {
-      const user = await createUser(req.body);
+      const user = await userService.createUser(req.body);
       // Generate the JWT token
-      const payload = { userId: user._id };
-      const jwtOptions = { expiresIn: "1d" }; // Set the token expiration time, e.g., 1 day
-      const token = jwt.sign(payload, config.jwtSecret, jwtOptions);
+      const token = userService.generateToken(user.id);
 
       // Remove the password field from the user object
       user.password = undefined;
@@ -36,6 +31,36 @@ router.post("/", userValidationRules, async (req, res) => {
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
+  }
+});
+
+// @route   POST api/login
+// @desc    Login the user and return JWT
+// @access  Registered users
+router.post("/login", async (req, res) => {
+  const { login, password } = req.body;
+  try {
+    const user = await User.findOne({
+      $or: [{ email: login }, { username: login }],
+    });
+    if (!user) {
+      res.status(400).json({ message: "user does not exist" });
+    } else {
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Invalid password" });
+      } else {
+        const token = userService.generateToken(user.id);
+        user.password = undefined;
+        return res.status(200).json({
+          token,
+          user,
+        });
+      }
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Server error :(" });
   }
 });
 
