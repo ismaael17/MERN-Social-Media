@@ -3,6 +3,7 @@ const router = express.Router();
 const userService = require("../services/userService");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/Users");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const userValidationRules = [
   body("email").isEmail().withMessage("Email is not valid."),
@@ -64,13 +65,34 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// @route   GET api/users
-// @desc    Get all users
-// @access  Public
-router.get("/", (req, res) => {
-  find()
-    .then((users) => res.json(users))
-    .catch((err) => res.status(404).json({ nousersfound: "No Users found" }));
+// @route   Get api/user/personal
+// @descr   Returns the information of the current user
+// @access  A logged in user
+router.get("/personal", authMiddleware, async (req, res) => {
+  try {
+    const user = req.user;
+    user.password = undefined;
+    return res.status(200).json({ user });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error." });
+  }
+});
+
+// @route   GET api/users/:username
+// @descr   Returns the information of the specified user
+// @access  A logged in user
+router.get("/:username", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (user) {
+      user.password = undefined;
+      return res.status(200).json(user);
+    } else {
+      return res.status(200).json({ message: "User not found." });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: "Server error." });
+  }
 });
 
 module.exports = router;
