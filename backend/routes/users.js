@@ -95,4 +95,78 @@ router.get("/:username", authMiddleware, async (req, res) => {
   }
 });
 
+// @route   PUT api/:userId
+// @descr   Updates the information of the logged-in user
+// @access  The userId owner
+router.put("/:userID", authMiddleware, async (req, res) => {
+  try {
+    // Use findById instead of findOne for finding user by ID
+    const user = await User.findById(req.params.userID);
+    if (user) {
+      // Use toString() to compare ObjectId with a string
+      if (user._id.toString() === req.user.userID) {
+        const username = req.body.username;
+        const password = req.body.password;
+        const email = req.body.email;
+
+        if (username) {
+          const existingUsername = User.findOne({ username: username });
+          if (existingUsername) {
+            return res.status(400).json({ message: "Username already exists" });
+          }
+          user.username = username;
+        }
+
+        // pre save hook defined by the user model so no need to hash password before saving it
+        if (password) {
+          user.password = password;
+        }
+
+        if (email) {
+          const existingEmail = User.findOne({ email: email });
+          if (existingEmail) {
+            return res.status(400).json({ message: "Email already exists" });
+          }
+          user.email = email;
+        }
+
+        const updatedUser = await user.save();
+        updatedUser.password = undefined;
+        return res.status(200).json({ user: updatedUser });
+      } else {
+        return res
+          .status(403)
+          .json({ message: "Unauthorized to update this user" });
+      }
+    } else {
+      return res.status(404).json({ message: "User not found." });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+});
+
+// @route   DELETE api/:userID
+// @descr   Deletes the user with id userID
+// @access  The userID owner
+router.delete("/:userID", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userID);
+    if (user) {
+      if (user._id.toString() === req.params.userID) {
+        await user.remove();
+      } else {
+        return res
+          .status(403)
+          .json({ message: "Unauthorized to delete this user" });
+      }
+    } else {
+      return res.status(404).json({ message: "User not foundd" });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: "Server error." });
+  }
+});
+
 module.exports = router;
