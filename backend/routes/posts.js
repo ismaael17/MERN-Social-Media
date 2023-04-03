@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const Post = require("../models/Posts");
+const User = require("../models/Users");
 
 // @route   POST api/posts
 // @descr   Create a new post
@@ -61,6 +62,28 @@ router.get("/:postID", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// @route   GET api/posts/user/:userID
+// @descr   Gets all the posts of the specified user
+// @access  Logged in users
+router.get("/user/:userID", authMiddleware, async (req, res) => {
+  try {
+    if (req.params.userID.length !== 24) {
+      return res.status(404).json({ message: "Invalid userID" });
+    } else {
+      const user = await User.findById(req.params.userID);
+      if (user) {
+        const posts = await Post.find({ creator: req.params.userID });
+        return res.status(200).json(posts);
+      } else {
+        return res.status(404).json({ message: "User not found" });
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error." });
   }
 });
 module.exports = router;

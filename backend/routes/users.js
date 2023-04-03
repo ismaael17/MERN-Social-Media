@@ -35,6 +35,19 @@ router.post("/", userValidationRules, async (req, res) => {
   }
 });
 
+// @route   GET api/users
+// @desc    Gets all the users
+// @acceess Logged in users
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find();
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error." });
+  }
+});
+
 // @route   POST api/login
 // @desc    Login the user and return JWT
 // @access  Registered users
