@@ -189,4 +189,33 @@ router.put("/:postId", authMiddleware, async (req, res) => {
   }
 });
 
+// @route   DELETE api/posts/:postID
+// @descr   Deletes the specified post
+// @access  The creator of the post
+router.delete("/:postID", authMiddleware, async (req, res) => {
+  try {
+    if (req.params.postID.length !== 24) {
+      return res.status(403).json({ message: "Invalid userID" });
+    } else {
+      const post = await Post.findById(req.params.postID);
+      if (post) {
+        if (post.creator.toString() !== req.user.userId) {
+          return res
+            .status(403)
+            .json({ message: "Unauthorized to update this post." });
+        } else {
+          await post.deleteOne();
+          const userPosts = await Post.find({ creator: req.user.userId });
+          return res.status(200).json(userPosts);
+        }
+      } else {
+        return res.status(404).json({ message: "Post not found." });
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error." });
+  }
+});
+
 module.exports = router;
