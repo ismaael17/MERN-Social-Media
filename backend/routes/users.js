@@ -171,7 +171,7 @@ router.delete("/:userID", authMiddleware, async (req, res) => {
     const user = await User.findById(req.params.userID);
     if (user) {
       if (user._id.toString() === req.params.userID) {
-        await user.remove();
+        await user.deleteOne();
       } else {
         return res
           .status(403)
